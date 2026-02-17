@@ -121,20 +121,20 @@ export class TriPasswordAuthStrategyOptions extends TriAuthStrategyOptions {
     getter: (
       module: string,
       res: HttpResponse<object>,
-      options: TriPasswordAuthStrategyOptions
-    ) => getDeepFromObject(res.body, options.token.key),
+      options: TriPasswordAuthStrategyOptions,
+    ) => getDeepFromObject(res.body || undefined, options.token!.key!),
   };
   errors?: TriPasswordStrategyMessage = {
     key: 'data.errors',
     getter: (
       module: keyof TriPasswordAuthStrategyOptions,
       res: HttpErrorResponse,
-      options: TriPasswordAuthStrategyOptions
+      options: TriPasswordAuthStrategyOptions,
     ) =>
       getDeepFromObject(
         res.error,
-        options.errors.key,
-        (options[module] as TriPasswordStrategyModule).defaultErrors
+        options.errors!.key!,
+        (options[module] as TriPasswordStrategyModule).defaultErrors,
       ),
   };
   messages?: TriPasswordStrategyMessage = {
@@ -142,12 +142,12 @@ export class TriPasswordAuthStrategyOptions extends TriAuthStrategyOptions {
     getter: (
       module: keyof TriPasswordAuthStrategyOptions,
       res: HttpResponse<object>,
-      options: TriPasswordAuthStrategyOptions
+      options: TriPasswordAuthStrategyOptions,
     ) =>
       getDeepFromObject(
-        res.body,
-        options.messages.key,
-        (options[module] as TriPasswordStrategyModule).defaultMessages
+        res.body || undefined,
+        options.messages!.key!,
+        (options[module] as TriPasswordStrategyModule).defaultMessages,
       ),
   };
   validation?: {

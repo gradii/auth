@@ -73,7 +73,7 @@ export function triAuthCreateToken<T extends TriAuthToken>(
   tokenClass: TriAuthTokenClass<T>,
   token: any,
   ownerStrategyName: string,
-  createdAt?: Date
+  createdAt?: Date,
 ) {
   return new tokenClass(token, ownerStrategyName, createdAt);
 }
@@ -87,7 +87,7 @@ export function decodeJwtPayload(payload: string): any {
 
   if (parts.length !== 3) {
     throw new TriAuthIllegalJWTTokenError(
-      `The payload ${payload} is not valid JWT payload and must consist of three parts.`
+      `The payload ${payload} is not valid JWT payload and must consist of three parts.`,
     );
   }
 
@@ -96,13 +96,13 @@ export function decodeJwtPayload(payload: string): any {
     decoded = urlBase64Decode(parts[1]);
   } catch (e) {
     throw new TriAuthIllegalJWTTokenError(
-      `The payload ${payload} is not valid JWT payload and cannot be parsed.`
+      `The payload ${payload} is not valid JWT payload and cannot be parsed.`,
     );
   }
 
   if (!decoded) {
     throw new TriAuthIllegalJWTTokenError(
-      `The payload ${payload} is not valid JWT payload and cannot be decoded.`
+      `The payload ${payload} is not valid JWT payload and cannot be decoded.`,
     );
   }
   return JSON.parse(decoded) as any;
@@ -119,7 +119,7 @@ export class TriAuthSimpleToken extends TriAuthToken {
   constructor(
     protected readonly token: any,
     protected readonly ownerStrategyName: string,
-    createdAt?: Date
+    createdAt?: Date,
   ) {
     super();
     try {
@@ -137,7 +137,7 @@ export class TriAuthSimpleToken extends TriAuthToken {
     this.payload = null;
   }
 
-  protected prepareCreatedAt(date: Date) {
+  protected prepareCreatedAt(date?: Date) {
     return date ? date : new Date();
   }
 
@@ -187,7 +187,7 @@ export class TriAuthJWTToken extends TriAuthSimpleToken {
   /**
    * for JWT token, the iat (issued at) field of the token payload contains the creation Date
    */
-  protected override prepareCreatedAt(date: Date) {
+  protected override prepareCreatedAt(date?: Date) {
     const decoded = this.getPayload();
     return decoded && decoded.iat
       ? new Date(Number(decoded.iat) * 1000)
@@ -224,10 +224,8 @@ export class TriAuthJWTToken extends TriAuthSimpleToken {
    * @returns {boolean}
    */
   override isValid(): boolean {
-    return (
-      super.isValid() &&
-      (!this.getTokenExpDate() || new Date() < this.getTokenExpDate()!)
-    );
+    const exp = this.getTokenExpDate();
+    return super.isValid() && (!exp || new Date() < exp);
   }
 }
 
@@ -249,7 +247,7 @@ export class TriAuthOAuth2Token extends TriAuthSimpleToken {
   constructor(
     data: { [key: string]: string | number } | string = {},
     ownerStrategyName: string,
-    createdAt?: Date
+    createdAt?: Date,
   ) {
     // we may get it as string when retrieving from a storage
     super(prepareOAuth2Token(data), ownerStrategyName, createdAt);
@@ -289,7 +287,7 @@ export class TriAuthOAuth2Token extends TriAuthSimpleToken {
     } else {
       if (!Object.keys(this.token).length) {
         throw new TriAuthEmptyTokenError(
-          'Cannot extract payload from an empty token.'
+          'Cannot extract payload from an empty token.',
         );
       }
     }
@@ -309,10 +307,8 @@ export class TriAuthOAuth2Token extends TriAuthSimpleToken {
    * @returns {boolean}
    */
   override isValid(): boolean {
-    return (
-      super.isValid() &&
-      (!this.getTokenExpDate() || new Date() < this.getTokenExpDate())
-    );
+    const exp = this.getTokenExpDate();
+    return super.isValid() && (!exp || new Date() < exp);
   }
 
   /**
@@ -324,7 +320,7 @@ export class TriAuthOAuth2Token extends TriAuthSimpleToken {
       return null;
     }
     return new Date(
-      this.createdAt.getTime() + Number(this.token.expires_in) * 1000
+      this.createdAt.getTime() + Number(this.token.expires_in) * 1000,
     );
   }
 
@@ -369,7 +365,7 @@ export class TriAuthOAuth2JWTToken extends TriAuthOAuth2Token {
   /**
    * for Oauth2 JWT token, the iat (issued at) field of the access_token payload
    */
-  protected override prepareCreatedAt(date: Date) {
+  protected override prepareCreatedAt(date?: Date) {
     const payload = this.accessTokenPayload;
     return payload && payload.iat
       ? new Date(Number(payload.iat) * 1000)
@@ -390,7 +386,7 @@ export class TriAuthOAuth2JWTToken extends TriAuthOAuth2Token {
    * - super.getExpDate() otherwise
    * @returns Date
    */
-  override getTokenExpDate(): Date {
+  override getTokenExpDate(): Date | null {
     if (
       this.accessTokenPayload &&
       this.accessTokenPayload.hasOwnProperty('exp')

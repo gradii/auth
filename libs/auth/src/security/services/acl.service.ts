@@ -111,7 +111,7 @@ export class TriAclService {
 
     const parentRole = this.getRoleParent(role);
     const parentCan =
-      parentRole && this.can(this.getRoleParent(role), permission, resource);
+      parentRole && this.can(parentRole, permission, resource);
     return parentCan || this.exactCan(role, permission, resource);
   }
 

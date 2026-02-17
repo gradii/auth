@@ -32,7 +32,7 @@ export class TriOAuth2AuthStrategyOptions extends TriAuthStrategyOptions {
   clientId = '';
   clientSecret?: string = '';
   clientAuthMethod?: string = TriOAuth2ClientAuthMethod.NONE;
-  redirect?: { success?: string; failure?: string } = {
+  redirect?: { success?: string; failure?: string | null } = {
     success: '/',
     failure: null,
   };

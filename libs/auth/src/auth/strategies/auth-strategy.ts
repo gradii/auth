@@ -16,8 +16,8 @@ import {
 import { TriAuthStrategyOptions } from './auth-strategy-options';
 
 export abstract class TriAuthStrategy {
-  protected defaultOptions: TriAuthStrategyOptions;
-  protected options: TriAuthStrategyOptions;
+  protected defaultOptions!: TriAuthStrategyOptions;
+  protected options!: TriAuthStrategyOptions;
 
   // we should keep this any and validation should be done in `register` method instead
   // otherwise it won't be possible to pass an empty object
@@ -86,7 +86,7 @@ export abstract class TriAuthStrategy {
     }
 
     let headers = new HttpHeaders();
-    Object.entries(customHeaders).forEach(([key, value]) => {
+    Object.entries(customHeaders!).forEach(([key, value]) => {
       headers = headers.append(key, value);
     });
     return headers;

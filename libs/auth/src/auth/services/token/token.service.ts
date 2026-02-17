@@ -18,7 +18,7 @@ import { TriAuthToken } from './token';
 export class TriTokenService {
   protected tokenStorage = inject(TriTokenStorage);
 
-  protected token$: BehaviorSubject<TriAuthToken | null> = new BehaviorSubject(
+  protected token$: BehaviorSubject<TriAuthToken | null> = new BehaviorSubject<TriAuthToken | null>(
     null
   );
 

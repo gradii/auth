@@ -4,29 +4,21 @@
  * Use of this source code is governed by an MIT-style license
  */
 
-import { Injectable, DOCUMENT, inject } from '@angular/core';
-import {
-  HttpClient,
-  HttpErrorResponse,
-  HttpHeaders,
-} from '@angular/common/http';
+import { DOCUMENT, inject, Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { Observable, of as observableOf } from 'rxjs';
-import { switchMap, map, catchError } from 'rxjs/operators';
+import { catchError, map, switchMap } from 'rxjs/operators';
 
 import { TriAuthStrategy } from '../auth-strategy';
-import {
-  TriAuthIllegalTokenError,
-  TriAuthRefreshableToken,
-  TriAuthToken,
-} from '../../services/token/token';
+import { TriAuthIllegalTokenError, TriAuthRefreshableToken, TriAuthToken } from '../../services/token/token';
 import { TriAuthResult } from '../../services/auth-result';
 import {
-  TriOAuth2AuthStrategyOptions,
-  TriOAuth2ResponseType,
   auth2StrategyOptions,
-  TriOAuth2GrantType,
+  TriOAuth2AuthStrategyOptions,
   TriOAuth2ClientAuthMethod,
+  TriOAuth2GrantType,
+  TriOAuth2ResponseType
 } from './oauth2-strategy.options';
 import { TriAuthStrategyClass } from '../../auth.options';
 
@@ -103,7 +95,7 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
   protected document? = inject<Document>(DOCUMENT, { optional: true });
 
   static setup(
-    options: TriOAuth2AuthStrategyOptions
+    options: TriOAuth2AuthStrategyOptions,
   ): [TriAuthStrategyClass, TriOAuth2AuthStrategyOptions] {
     return [TriOAuth2AuthStrategy, options];
   }
@@ -131,10 +123,10 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
               params,
               this.getOption('redirect.failure'),
               this.getOption('defaultErrors'),
-              []
-            )
+              [],
+            ),
           );
-        })
+        }),
       );
     },
     [TriOAuth2ResponseType.TOKEN]: () => {
@@ -150,7 +142,7 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
               this.getOption('redirect.success'),
               [],
               this.getOption('defaultMessages'),
-              this.createToken(params, requireValidToken)
+              this.createToken(params, requireValidToken),
             );
           }
           return new TriAuthResult(
@@ -158,7 +150,7 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
             params,
             this.getOption('redirect.failure'),
             this.getOption('defaultErrors'),
-            []
+            [],
           );
         }),
         catchError((err) => {
@@ -173,10 +165,10 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
               false,
               err,
               this.getOption('redirect.failure'),
-              errors
-            )
+              errors,
+            ),
           );
-        })
+        }),
       );
     },
   };
@@ -185,15 +177,15 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
   protected redirectResults: { [key: string]: Function } = {
     [TriOAuth2ResponseType.CODE]: () => {
       return observableOf(this.route.snapshot.queryParams).pipe(
-        map((params: any) => !!(params && (params.code || params.error)))
+        map((params: any) => !!(params && (params.code || params.error))),
       );
     },
     [TriOAuth2ResponseType.TOKEN]: () => {
       return observableOf(this.route.snapshot.fragment).pipe(
         map((fragment) => this.parseHashAsQueryParams(fragment)),
         map(
-          (params: any) => !!(params && (params.access_token || params.error))
-        )
+          (params: any) => !!(params && (params.access_token || params.error)),
+        ),
       );
     },
   };
@@ -212,7 +204,7 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
             return observableOf(new TriAuthResult(true));
           }
           return this.getAuthorizationResult();
-        })
+        }),
       );
     }
   }
@@ -236,7 +228,7 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
     let headers = this.buildAuthHeader() || new HttpHeaders();
     headers = headers.append(
       'Content-Type',
-      'application/x-www-form-urlencoded'
+      'application/x-www-form-urlencoded',
     );
 
     return this.http
@@ -249,10 +241,10 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
             this.getOption('redirect.success'),
             [],
             this.getOption('defaultMessages'),
-            this.createRefreshedToken(res, token, requireValidToken)
+            this.createRefreshedToken(res, token, requireValidToken),
           );
         }),
-        catchError((res) => this.handleResponseError(res))
+        catchError((res) => this.handleResponseError(res)),
       );
   }
 
@@ -264,7 +256,7 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
     let headers = this.buildAuthHeader() || new HttpHeaders();
     headers = headers.append(
       'Content-Type',
-      'application/x-www-form-urlencoded'
+      'application/x-www-form-urlencoded',
     );
 
     return this.http
@@ -279,10 +271,10 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
             this.getOption('redirect.success'),
             [],
             this.getOption('defaultMessages'),
-            this.createToken(res, requireValidToken)
+            this.createToken(res, requireValidToken),
           );
         }),
-        catchError((res) => this.handleResponseError(res))
+        catchError((res) => this.handleResponseError(res)),
       );
   }
 
@@ -308,7 +300,7 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
     let headers = this.buildAuthHeader() || new HttpHeaders();
     headers = headers.append(
       'Content-Type',
-      'application/x-www-form-urlencoded'
+      'application/x-www-form-urlencoded',
     );
 
     return this.http
@@ -321,10 +313,10 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
             this.getOption('redirect.success'),
             [],
             this.getOption('defaultMessages'),
-            this.createToken(res, requireValidToken)
+            this.createToken(res, requireValidToken),
           );
         }),
-        catchError((res) => this.handleResponseError(res))
+        catchError((res) => this.handleResponseError(res)),
       );
   }
 
@@ -336,7 +328,7 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
       client_id: this.getOption('clientId'),
     };
     return this.urlEncodeParameters(
-      this.cleanParams(this.addCredentialsToParams(params))
+      this.cleanParams(this.addCredentialsToParams(params)),
     );
   }
 
@@ -348,13 +340,13 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
       client_id: this.getOption('clientId'),
     };
     return this.urlEncodeParameters(
-      this.cleanParams(this.addCredentialsToParams(params))
+      this.cleanParams(this.addCredentialsToParams(params)),
     );
   }
 
   protected buildPasswordRequestData(
     username: string,
-    password: string
+    password: string,
   ): string {
     const params = {
       grant_type: this.getOption('token.grantType'),
@@ -363,7 +355,7 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
       scope: this.getOption('token.scope'),
     };
     return this.urlEncodeParameters(
-      this.cleanParams(this.addCredentialsToParams(params))
+      this.cleanParams(this.addCredentialsToParams(params)),
     );
   }
 
@@ -374,12 +366,12 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
           Authorization:
             'Basic ' +
             btoa(
-              this.getOption('clientId') + ':' + this.getOption('clientSecret')
+              this.getOption('clientId') + ':' + this.getOption('clientSecret'),
             ),
         });
       } else {
         throw Error(
-          'For basic client authentication method, please provide both clientId & clientSecret.'
+          'For basic client authentication method, please provide both clientId & clientSecret.',
         );
       }
     }
@@ -400,7 +392,7 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
         };
       } else {
         throw Error(
-          'For request body client authentication method, please provide both clientId & clientSecret.'
+          'For request body client authentication method, please provide both clientId & clientSecret.',
         );
       }
     }
@@ -427,8 +419,8 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
         res,
         this.getOption('redirect.failure'),
         errors,
-        []
-      )
+        [],
+      ),
     );
   }
 
@@ -449,7 +441,9 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
     return `${endpoint}?${query}`;
   }
 
-  protected parseHashAsQueryParams(hash: string): { [key: string]: string } {
+  protected parseHashAsQueryParams(hash: string | null): {
+    [key: string]: string;
+  } {
     return hash
       ? hash.split('&').reduce((acc: any, part: string) => {
           const item = part.split('=');
@@ -470,13 +464,13 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
   protected createRefreshedToken(
     res: any,
     existingToken: TriAuthRefreshableToken,
-    requireValidToken: boolean
+    requireValidToken: boolean,
   ): TriAuthToken {
     type AuthRefreshToken = TriAuthRefreshableToken & TriAuthToken;
 
     const refreshedToken: AuthRefreshToken = this.createToken<AuthRefreshToken>(
       res,
-      requireValidToken
+      requireValidToken,
     );
     if (!refreshedToken.getRefreshToken() && existingToken.getRefreshToken()) {
       refreshedToken.setRefreshToken(existingToken.getRefreshToken());
@@ -486,19 +480,19 @@ export class TriOAuth2AuthStrategy extends TriAuthStrategy {
 
   register(data?: any): Observable<TriAuthResult> {
     throw new Error(
-      '`register` is not supported by `TriOAuth2AuthStrategy`, use `authenticate`.'
+      '`register` is not supported by `TriOAuth2AuthStrategy`, use `authenticate`.',
     );
   }
 
   requestPassword(data?: any): Observable<TriAuthResult> {
     throw new Error(
-      '`requestPassword` is not supported by `TriOAuth2AuthStrategy`, use `authenticate`.'
+      '`requestPassword` is not supported by `TriOAuth2AuthStrategy`, use `authenticate`.',
     );
   }
 
   resetPassword(data: any = {}): Observable<TriAuthResult> {
     throw new Error(
-      '`resetPassword` is not supported by `TriOAuth2AuthStrategy`, use `authenticate`.'
+      '`resetPassword` is not supported by `TriOAuth2AuthStrategy`, use `authenticate`.',
     );
   }
 
