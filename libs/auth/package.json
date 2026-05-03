@@ -1,6 +1,10 @@
 {
   "name": "@gradii/auth",
   "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gradii/auth.git"
+  },
   "peerDependencies": {
     "@angular/common": "^21.1.0",
     "@angular/core": "^21.1.0"
