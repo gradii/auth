@@ -35,7 +35,7 @@ export abstract class TriTokenStorage {
  */
 @Injectable()
 export class TriTokenLocalStorage extends TriTokenStorage {
-  protected key = inject(TRI_AUTH_TOKEN_LOCAL_STORAGE_KEY) ?? 'auth_app_token';
+  protected key = inject(TRI_AUTH_TOKEN_LOCAL_STORAGE_KEY, { optional: true }) ?? 'auth_app_token';
   private parceler = inject(TriAuthTokenParceler);
 
   /**

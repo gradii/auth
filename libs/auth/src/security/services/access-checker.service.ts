@@ -5,16 +5,16 @@
  */
 
 
-import { Injectable, inject } from '@angular/core';
-import { TriRoleProvider } from './role.provider';
+import { computed, inject, Injectable, type Signal } from '@angular/core';
 import { TriAclService } from './acl.service';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { TriRoleProvider } from './role.provider';
 
 /**
  * Access checker service.
  *
- * Injects `NbRoleProvider` to determine current user role, and checks access permissions using `TriAclService`
+ * Injects `TriRoleProvider` to determine current user role, and checks access permissions using `TriAclService`.
+ *
+ * v1.0.0 — Signal-based API.
  */
 @Injectable()
 export class TriAccessChecker {
@@ -22,18 +22,20 @@ export class TriAccessChecker {
   protected acl = inject(TriAclService);
 
   /**
-   * Checks whether access is granted or not
+   * Checks whether access is granted or not.
+   *
+   * Returns a reactive {@link Signal} — recomputes whenever the user's role changes.
    *
    * @param {string} permission
    * @param {string} resource
-   * @returns {Observable<boolean>}
+   * @returns {Signal<boolean>}
    */
-  isGranted(permission: string, resource: string): Observable<boolean> {
-    return this.roleProvider.getRole().pipe(
-      map((role: string | string[]) => (Array.isArray(role) ? role : [role])),
-      map((roles: string[]) => {
-        return roles.some((role) => this.acl.can(role, permission, resource));
-      })
-    );
+  isGranted(permission: string, resource: string): Signal<boolean> {
+    const role$ = this.roleProvider.getRole();
+    return computed(() => {
+      const role = role$();
+      const roles = Array.isArray(role) ? role : [role];
+      return roles.some((r) => this.acl.can(r, permission, resource));
+    });
   }
 }

@@ -4,20 +4,25 @@
  * Use of this source code is governed by an MIT-style license
  */
 
-import { Injectable, inject } from '@angular/core';
-
+import { computed, inject, Injectable, type Signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { Observable, of as observableOf } from 'rxjs';
-import { switchMap, map } from 'rxjs/operators';
+import { finalize, map, shareReplay, switchMap } from 'rxjs/operators';
 
-import { TriAuthStrategy } from '../strategies/auth-strategy';
 import { TRI_AUTH_STRATEGIES } from '../auth.options';
+import { TriAuthStrategy } from '../strategies/auth-strategy';
 import { TriAuthResult } from './auth-result';
-import { TriTokenService } from './token/token.service';
 import { TriAuthToken } from './token/token';
+import { TriTokenService } from './token/token.service';
 
 /**
  * Common authentication service.
  * Should be used to as an interlayer between UI Components and Auth Strategy.
+ *
+ * v1.0.0 — module-less. State accessors (`token`, `isAuthenticated`) are exposed
+ * as Signals. Public action functions (`authenticate`, `register`, `logout`, …)
+ * still return rxjs `Observable`. Change streams (`onTokenChange`,
+ * `onAuthenticationChange`) are exposed as Observables via `toObservable` interop.
  */
 @Injectable()
 export class TriAuthService {
@@ -25,62 +30,83 @@ export class TriAuthService {
   protected strategies = inject<TriAuthStrategy[]>(TRI_AUTH_STRATEGIES);
 
   /**
-   * Retrieves current authenticated token stored
-   * @returns {Observable<any>}
+   * Current token signal — null when no token is stored.
+   * @returns {Signal<TriAuthToken | null>}
    */
-  getToken(): Observable<TriAuthToken> {
-    return this.tokenService.get();
-  }
+  readonly token: Signal<TriAuthToken | null> = this.tokenService.token;
 
   /**
-   * Returns true if auth token is present in the token storage
-   * @returns {Observable<boolean>}
+   * Reactive authentication state derived from the current token.
+   * @returns {Signal<boolean>}
    */
-  isAuthenticated(): Observable<boolean> {
-    return this.getToken().pipe(map((token: TriAuthToken) => token.isValid()));
-  }
-
-  /**
-   * Returns true if valid auth token is present in the token storage.
-   * If not, calls the strategy refreshToken, and returns isAuthenticated() if success, false otherwise
-   * @returns {Observable<boolean>}
-   */
-  isAuthenticatedOrRefresh(): Observable<boolean> {
-    return this.getToken().pipe(
-      switchMap((token) => {
-        if (token.getValue() && !token.isValid()) {
-          return this.refreshToken(token.getOwnerStrategyName(), token).pipe(
-            switchMap((res) => {
-              if (res.isSuccess()) {
-                return this.isAuthenticated();
-              } else {
-                return observableOf(false);
-              }
-            })
-          );
-        } else {
-          return observableOf(token.isValid());
-        }
-      })
-    );
-  }
+  readonly isAuthenticated: Signal<boolean> = computed(() => {
+    const token = this.token();
+    return !!token && token.isValid();
+  });
 
   /**
    * Returns tokens stream
-   * @returns {Observable<TriAuthSimpleToken>}
+   * @returns {Observable<TriAuthToken | null>}
    */
-  onTokenChange(): Observable<TriAuthToken> {
-    return this.tokenService.tokenChange();
-  }
+  readonly onTokenChange: Observable<TriAuthToken | null> = this.tokenService.tokenChange;
 
   /**
    * Returns authentication status stream
    * @returns {Observable<boolean>}
    */
-  onAuthenticationChange(): Observable<boolean> {
-    return this.onTokenChange().pipe(
-      map((token: TriAuthToken) => token.isValid())
-    );
+  readonly onAuthenticationChange: Observable<boolean> = toObservable(
+    computed(() => {
+      const token = this.token();
+      return !!token && token.isValid();
+    }),
+  );
+
+  /**
+   * Retrieves current authenticated token stored.
+   *
+   * Sync helper; equivalent to reading the `token` signal once.
+   * @returns {TriAuthToken | null}
+   */
+  getToken(): TriAuthToken | null {
+    return this.tokenService.get();
+  }
+
+  /**
+   * In-flight refresh request shared across concurrent callers.
+   * Cleared by `finalize` once the underlying HTTP refresh completes (success or error).
+   */
+  private activeRefresh$: Observable<boolean> | null = null;
+
+  /**
+   * Returns true if valid auth token is present in the token storage.
+   * If not, calls the strategy refreshToken, and returns isAuthenticated() if success, false otherwise.
+   *
+   * Concurrent calls dedupe: if a refresh is already in-flight, all subsequent callers
+   * receive the same shared `Observable<boolean>` until the request settles.
+   *
+   * @returns {Observable<boolean>}
+   */
+  isAuthenticatedOrRefresh(): Observable<boolean> {
+    const token = this.getToken();
+    if (token && token.getValue() && !token.isValid()) {
+      // 1. If a refresh is already in progress, return the existing shared observable.
+      if (this.activeRefresh$) {
+        return this.activeRefresh$;
+      }
+
+      // 2. Otherwise, build a new refresh pipeline that…
+      this.activeRefresh$ = this.refreshToken(token.getOwnerStrategyName(), token).pipe(
+        map((res) => res.isSuccess() && this.isAuthenticated()),
+        // 3. clears the in-flight cache once the HTTP request settles (next or error), and
+        finalize(() => {
+          this.activeRefresh$ = null;
+        }),
+        // 4. multicasts the execution and replays the last value to late subscribers.
+        shareReplay(1),
+      );
+      return this.activeRefresh$;
+    }
+    return observableOf(!!token && token.isValid());
   }
 
   /**
@@ -97,11 +123,7 @@ export class TriAuthService {
   authenticate(strategyName: string, data?: any): Observable<TriAuthResult> {
     return this.getStrategy(strategyName)
       .authenticate(data)
-      .pipe(
-        switchMap((result: TriAuthResult) => {
-          return this.processResultToken(result);
-        })
-      );
+      .pipe(switchMap((result: TriAuthResult) => this.processResultToken(result)));
   }
 
   /**
@@ -118,11 +140,7 @@ export class TriAuthService {
   register(strategyName: string, data?: any): Observable<TriAuthResult> {
     return this.getStrategy(strategyName)
       .register(data)
-      .pipe(
-        switchMap((result: TriAuthResult) => {
-          return this.processResultToken(result);
-        })
-      );
+      .pipe(switchMap((result: TriAuthResult) => this.processResultToken(result)));
   }
 
   /**
@@ -139,12 +157,12 @@ export class TriAuthService {
     return this.getStrategy(strategyName)
       .logout()
       .pipe(
-        switchMap((result: TriAuthResult) => {
+        map((result: TriAuthResult) => {
           if (result.isSuccess()) {
-            this.tokenService.clear().pipe(map(() => result));
+            this.tokenService.clear();
           }
-          return observableOf(result);
-        })
+          return result;
+        }),
       );
   }
 
@@ -190,11 +208,7 @@ export class TriAuthService {
   refreshToken(strategyName: string, data?: any): Observable<TriAuthResult> {
     return this.getStrategy(strategyName)
       .refreshToken(data)
-      .pipe(
-        switchMap((result: TriAuthResult) => {
-          return this.processResultToken(result);
-        })
-      );
+      .pipe(switchMap((result: TriAuthResult) => this.processResultToken(result)));
   }
 
   /**
@@ -203,30 +217,26 @@ export class TriAuthService {
    * Example:
    * getStrategy('email')
    *
-   * @param {string} provider
-   * @returns {TriAbstractAuthProvider}
+   * @param {string} strategyName
+   * @returns {TriAuthStrategy}
    */
   protected getStrategy(strategyName: string): TriAuthStrategy {
     const found = this.strategies.find(
-      (strategy: TriAuthStrategy) => strategy.getName() === strategyName
+      (strategy: TriAuthStrategy) => strategy.getName() === strategyName,
     );
 
     if (!found) {
       throw new TypeError(
-        `There is no Auth Strategy registered under '${strategyName}' name`
+        `There is no Auth Strategy registered under '${strategyName}' name`,
       );
     }
 
     return found;
   }
 
-  private processResultToken(result: TriAuthResult) {
+  private processResultToken(result: TriAuthResult): Observable<TriAuthResult> {
     if (result.isSuccess() && result.getToken()) {
-      return this.tokenService.set(result.getToken()!).pipe(
-        map((token: TriAuthToken | null) => {
-          return result;
-        })
-      );
+      this.tokenService.set(result.getToken()!);
     }
 
     return observableOf(result);

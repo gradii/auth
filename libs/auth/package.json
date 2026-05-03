@@ -1,6 +1,6 @@
 {
   "name": "@gradii/auth",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "peerDependencies": {
     "@angular/common": "^21.1.0",
     "@angular/core": "^21.1.0"

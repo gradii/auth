@@ -4,14 +4,13 @@
  * Use of this source code is governed by an MIT-style license
  */
 
-
-import { Observable } from 'rxjs';
+import type { Signal } from '@angular/core';
 
 export abstract class TriRoleProvider {
 
   /**
    * Returns current user role
-   * @returns {Observable<string | string[]>}
+   * @returns {Signal<string | string[]>}
    */
-  abstract getRole(): Observable<string|string[]>;
+  abstract getRole(): Signal<string | string[]>;
 }

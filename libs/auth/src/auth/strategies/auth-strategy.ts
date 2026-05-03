@@ -31,12 +31,12 @@ export abstract class TriAuthStrategy {
 
   createToken<T extends TriAuthToken>(
     value: any,
-    failWhenInvalidToken?: boolean
+    failWhenInvalidToken?: boolean,
   ): T {
     const token = triAuthCreateToken<T>(
       this.getOption('token.class'),
       value,
-      this.getName()
+      this.getName(),
     );
     // At this point, triAuthCreateToken failed with TriAuthIllegalTokenError which MUST be intercepted by strategies
     // Or token is created. It MAY be created even if backend did not return any token, in this case it is !Valid
@@ -64,12 +64,12 @@ export abstract class TriAuthStrategy {
 
   abstract refreshToken(data?: any): Observable<TriAuthResult>;
 
-  protected createFailResponse(data?: any): HttpResponse<Object> {
-    return new HttpResponse<Object>({ body: {}, status: 401 });
+  protected createFailResponse(data?: any): HttpResponse<object> {
+    return new HttpResponse<object>({ body: {}, status: 401 });
   }
 
-  protected createSuccessResponse(data?: any): HttpResponse<Object> {
-    return new HttpResponse<Object>({ body: {}, status: 200 });
+  protected createSuccessResponse(data?: any): HttpResponse<object> {
+    return new HttpResponse<object>({ body: {}, status: 200 });
   }
 
   protected getActionEndpoint(action: string): string {

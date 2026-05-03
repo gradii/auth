@@ -6,43 +6,34 @@
 
 import {
   HttpEvent,
-  HttpHandler,
-  HttpInterceptor,
+  HttpHandlerFn,
   HttpRequest,
+  type HttpInterceptorFn,
 } from '@angular/common/http';
-import { Injectable, Injector, inject } from '@angular/core';
+import { inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+
 import { TRI_AUTH_INTERCEPTOR_HEADER } from '../../auth.options';
-
 import { TriAuthService } from '../auth.service';
-import { TriAuthToken } from '../token/token';
 
-@Injectable()
-export class TriAuthSimpleInterceptor implements HttpInterceptor {
-  private injector = inject(Injector);
-  protected headerName =
+/**
+ * Functional simple interceptor — module-less.
+ *
+ * Register via `withInterceptors([triAuthSimpleInterceptor])` in `provideHttpClient`.
+ */
+export const triAuthSimpleInterceptor: HttpInterceptorFn = (
+  req: HttpRequest<unknown>,
+  next: HttpHandlerFn,
+): Observable<HttpEvent<unknown>> => {
+  const authService = inject(TriAuthService);
+  const headerName =
     inject(TRI_AUTH_INTERCEPTOR_HEADER, { optional: true }) ?? 'Authorization';
 
-  intercept(
-    req: HttpRequest<any>,
-    next: HttpHandler
-  ): Observable<HttpEvent<any>> {
-    return this.authService.getToken().pipe(
-      switchMap((token: TriAuthToken) => {
-        if (token && token.getValue()) {
-          req = req.clone({
-            setHeaders: {
-              [this.headerName]: token.getValue(),
-            },
-          });
-        }
-        return next.handle(req);
-      })
-    );
+  const token = authService.getToken();
+  if (token && token.getValue()) {
+    req = req.clone({
+      setHeaders: { [headerName]: token.getValue() },
+    });
   }
-
-  protected get authService(): TriAuthService {
-    return this.injector.get(TriAuthService);
-  }
-}
+  return next(req);
+};

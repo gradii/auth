@@ -4,72 +4,68 @@
  * Use of this source code is governed by an MIT-style license
  */
 
-import { Injectable, inject } from '@angular/core';
-import { Observable, BehaviorSubject, of as observableOf } from 'rxjs';
-import { filter, share } from 'rxjs/operators';
+import { inject, Injectable, signal, type Signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
+import type { Observable } from 'rxjs';
 
-import { TriTokenStorage } from './token-storage';
 import { TriAuthToken } from './token';
+import { TriTokenStorage } from './token-storage';
 
 /**
  * Service that allows you to manage authentication token - get, set, clear and also listen to token changes over time.
+ *
+ * v1.0.0 — backed by an Angular signal. The `tokenChange` Observable is preserved
+ * via `toObservable` rxjs interop so existing rxjs consumers keep working.
  */
 @Injectable()
 export class TriTokenService {
   protected tokenStorage = inject(TriTokenStorage);
 
-  protected token$: BehaviorSubject<TriAuthToken | null> = new BehaviorSubject<TriAuthToken | null>(
-    null
-  );
+  private readonly _token = signal<TriAuthToken | null>(null);
+
+  /**
+   * Reactive token state.
+   * @returns {Signal<TriAuthToken | null>}
+   */
+  readonly token: Signal<TriAuthToken | null> = this._token.asReadonly();
+
+  /**
+   * Publishes token when it changes.
+   * @returns {Observable<TriAuthToken | null>}
+   */
+  readonly tokenChange: Observable<TriAuthToken | null> = toObservable(this._token);
 
   constructor() {
     this.publishStoredToken();
   }
 
   /**
-   * Publishes token when it changes.
-   * @returns {Observable<TriAuthToken>}
-   */
-  tokenChange(): Observable<TriAuthToken> {
-    return this.token$.pipe(
-      filter((value) => !!value),
-      share()
-    );
-  }
-
-  /**
    * Sets a token into the storage. This method is used by the TriAuthService automatically.
    *
    * @param {TriAuthToken} token
-   * @returns {Observable<any>}
    */
-  set(token: TriAuthToken): Observable<null> {
+  set(token: TriAuthToken): void {
     this.tokenStorage.set(token);
     this.publishStoredToken();
-    return observableOf(null);
   }
 
   /**
-   * Returns observable of current token
-   * @returns {Observable<TriAuthToken>}
+   * Returns the current token synchronously.
+   * @returns {TriAuthToken | null}
    */
-  get(): Observable<TriAuthToken> {
-    const token = this.tokenStorage.get();
-    return observableOf(token);
+  get(): TriAuthToken | null {
+    return this.tokenStorage.get();
   }
 
   /**
-   * Removes the token and published token value
-   *
-   * @returns {Observable<any>}
+   * Removes the token and publishes the new (empty) token value.
    */
-  clear(): Observable<null> {
+  clear(): void {
     this.tokenStorage.clear();
     this.publishStoredToken();
-    return observableOf(null);
   }
 
-  protected publishStoredToken() {
-    this.token$.next(this.tokenStorage.get());
+  protected publishStoredToken(): void {
+    this._token.set(this.tokenStorage.get());
   }
 }

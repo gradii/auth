@@ -5,7 +5,7 @@
  */
 
 export * from './auth/auth.options';
-export * from './auth/auth.module';
+export * from './auth/provide-auth';
 export * from './auth/services/auth.service';
 export * from './auth/services/auth-result';
 export * from './auth/services/interceptors/jwt-interceptor';
@@ -28,7 +28,7 @@ export * from './auth/helpers';
 
 
 export * from './security/security.options';
-export * from './security/security.module';
+export * from './security/provide-security';
 export * from './security/services/acl.service';
 export * from './security/services/access-checker.service';
 export * from './security/services/role.provider';
